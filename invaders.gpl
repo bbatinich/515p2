@@ -74,7 +74,6 @@ int bug_count = (bug_l1_count + bug_l2_count + bug_l3_count + bug_l4_count);
 int bug_spacer = 20;
 int bug_cycles = 0;
 
-
 // Visible objects and forward declarations.
 rectangle bugs[bug_count];
 rectangle bug_laser[bug_count];
