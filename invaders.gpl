@@ -3,6 +3,7 @@
 //  Brian Batinich
 //  2010-02-09
 //******************************************************************************
+
 // System variables.
 int window_width = 600;
 int window_height = 600;
