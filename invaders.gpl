@@ -1,0 +1,358 @@
+//******************************************************************************
+//  CSCI 515 Phase 2
+//  Brian Batinich
+//  2010-02-09
+//******************************************************************************
+// System variables.
+int window_width = 600;
+int window_height = 600;
+string window_title = "GPL Game";
+int animation_speed = 80;
+
+// Globals for various items.
+int DEBUG = 0;
+int i;
+int j;
+int n;
+int direction = 0;
+int LEFT = 0;
+int RIGHT = 1;
+int SLEEP = 40;
+int direction_changed = 0;
+int space_offset = 0;
+int screen_bounds = 10;
+int random_number;
+int alive = 0;
+int clear;
+int score = 0;
+int lives = 3;
+
+// The ship variables.
+int ship_size = 30;
+int ship_step = 15;
+int ship_y_offset = 30;
+int ship_cycles = 0;
+
+// The lasers.
+int laser_width = 4;
+int laser_height = 20;
+
+// The bug variables.
+int bug_size = 20;
+int bug_step = 5;
+int bug_l1_count = 8;
+int bug_l2_count = 6;
+int bug_l3_count = 4;
+int bug_l4_count = 2;
+int bug_count = (bug_l1_count + bug_l2_count + bug_l3_count + bug_l4_count);
+int bug_spacer = 20;
+int bug_cycles = 0;
+
+
+// Visible objects and forward declarations.
+rectangle bugs[bug_count];
+rectangle bug_laser[bug_count];
+rectangle ship_laser(w = 4, h = 20, visible = 0);
+
+forward animation animate_ship(triangle game_ship);
+forward animation march_bugs(rectangle bug);
+forward animation bugs_shoot(rectangle bug_shot);
+forward animation ship_shoot(rectangle ship_shot);
+forward animation update_score(textbox current_score);
+forward animation ship_meter(triangle current_ship);
+
+triangle ships[lives]; 
+triangle ship(x = (window_width / 2) - (ship_size / 2), y = ship_y_offset, 
+                    size = ship_size, animation_block = animate_ship); 
+textbox score_text(x = window_width / 2, y = window_height - 15, text = "Score: ");
+textbox score_value(x = window_width / 2 + 50, y = window_height - 15, text = score); 
+textbox game_over(x = window_width / 4 - 50,  y = window_height /2, 
+        text = "Game Over", size = .5, visible = 0); 
+pixmap image(filename = "bg.bmp");
+
+//------------------------------------------------------------------------------
+initialization {
+    for (i = (lives - 1); i >= 0; i -= 1) {
+        ships[i].animation_block = ship_meter;
+        ships[i].size = 10;
+        ships[i].y = (window_height - 15);
+        ships[i].x = (window_width - 10) - (i * 10);
+    }
+    score_value.animation_block = update_score;
+    score_text.red = 1.0;
+    score_text.green = 1.0;
+    score_text.blue = 1.0;
+    score_value.red = 1.0;
+    score_value.green = 1.0;
+    score_value.blue = 1.0;
+    game_over.red = 1.0;
+    game_over.green = 1.0;
+    game_over.blue = 1.0;
+    // Ugh...
+    ship_laser.animation_block = ship_shoot;
+    ship_laser.x = ship.x + (ship.w / 2);
+    ship_laser.y = ship.y + ship.h;
+    for (i = 0; i < bug_count; i += 1) {
+        bugs[i].animation_block = march_bugs;
+        bugs[i].w = bug_size;
+        bugs[i].h = bug_size;
+        bug_laser[i].visible = 0;
+        bug_laser[i].w = laser_width;
+        bug_laser[i].h = laser_height;
+        bug_laser[i].animation_block = bugs_shoot;
+        // Top row of bugs
+        if (i < bug_l1_count) {
+            bug_laser[i].red = 1.0;
+            bug_laser[i].green = 1.0;
+            bug_laser[i].blue = 0.0;
+    
+            bugs[i].red = 0.0;
+            bugs[i].green = 0.0;
+            bugs[i].blue = 1.0;
+            bugs[i].user_int = 0;
+            bugs[i].y = (window_height - (bug_spacer * 2));
+            if (i == 0) {
+                bugs[i].x = ((window_width / 2) - (bug_l1_count / 2 * bug_size) -
+                               (bug_l2_count / 2 * bug_spacer) - bug_spacer / 2);
+            }
+            if (i > 0) {
+                bugs[i].x = ((bug_spacer * 2) + bugs[i-1].x);
+
+            }
+        }
+        // Second row of bugs
+        if (i >= bug_l1_count && i < (bug_l1_count + bug_l2_count)) {
+            bug_laser[i].red = 0.0;
+            bug_laser[i].green = 0.0;
+            bug_laser[i].blue = 1.0;
+            bugs[i].red = 1.0;
+            bugs[i].green = 1.0;
+            bugs[i].blue = 0.0;
+            bugs[i].user_int = 1;
+            bugs[i].y = (window_height - (bug_spacer * 4));
+            if (i == bug_l1_count) {
+                bugs[i].x = ((window_width / 2) - (bug_l2_count / 2 * bug_size) -
+                               (bug_l3_count / 2 * bug_spacer) - bug_spacer / 2);
+            }
+            if (i > bug_l1_count) {
+                bugs[i].x = ((bug_spacer * 2) + bugs[i-1].x);
+
+            }
+        }
+        // Third row of bugs
+        if (i >= bug_l2_count + bug_l1_count && 
+                i < (bug_l1_count + bug_l2_count + bug_l3_count)) {
+            bug_laser[i].red = 0.0;
+            bug_laser[i].green = 1.0;
+            bug_laser[i].blue = 0.0;
+            bugs[i].red = 1.0;
+            bugs[i].green = 0.0;
+            bugs[i].blue = 1.0;
+            bugs[i].user_int = 2;
+            bugs[i].y = (window_height - (bug_spacer * 6));
+            if (i == bug_l1_count + bug_l2_count) {
+                bugs[i].x = ((window_width / 2) - (bug_l3_count / 2 * bug_size) -
+                                (bug_l4_count / 2 * bug_spacer) - bug_spacer / 2);
+            }
+            if (i > bug_l1_count + bug_l2_count) {
+                bugs[i].x = ((bug_spacer * 2) + bugs[i-1].x);
+            }
+        }
+        // Last row of bugs
+        if (i >= bug_l3_count + bug_l2_count + bug_l1_count && 
+                i < (bug_l1_count + bug_l2_count + bug_l3_count + bug_l4_count)) {
+            bugs[i].red = 0.0;
+            bugs[i].green = 1.0;
+            bugs[i].blue = 1.0;
+            bugs[i].user_int = 3;
+            bugs[i].y = (window_height - (bug_spacer * 8));
+            if (i == bug_l1_count + bug_l2_count + bug_l3_count) {
+                bugs[i].x = ((window_width / 2) - (bug_l4_count / 2 * bug_size) -
+                                 bug_spacer / 2);
+            }
+            if (i > bug_l1_count + bug_l2_count + bug_l3_count) {
+                bugs[i].x = ((bug_spacer * 2) + bugs[i-1].x);
+            }
+        }
+        bug_laser[i].x = bugs[i].x + (bugs[i].w / 2);
+        bug_laser[i].y = bugs[i].y - bugs[i].h;
+    }
+} 
+
+//------------------------------------------------------------------------------
+animation ship_meter(triangle current_ship) {
+    if (DEBUG > 0) {
+        print("animation::ship_meter:: lives = " + lives);
+    }
+    if (lives >= 0) {
+        for (n = (lives - 1); n >= 0; n -= 1) {
+            ships[n].visible = 1;
+        } 
+    }
+}
+
+//------------------------------------------------------------------------------
+animation update_score(textbox current_score) {
+    current_score.text = score;
+}
+
+//------------------------------------------------------------------------------
+animation bugs_shoot(rectangle bug_shot) {
+    if (bug_shot.visible == 1) {
+        bug_shot.y -= 20;
+    }
+    if (bug_shot.visible == 1 && bug_shot.y < 0) {
+        bug_shot.visible = 0;
+    }
+}
+
+//------------------------------------------------------------------------------
+animation ship_shoot(rectangle ship_shot) {
+    if (ship_shot.visible == 1) {
+        ship_shot.y += 20;
+    }
+    if (ship_shot.visible == 1 && ship_shot.y > window_height) {
+        ship_shot.visible = 0;
+    }
+}
+
+//------------------------------------------------------------------------------
+animation march_bugs(rectangle bug) {
+    for (j = 0; j < bug_count; j += 1) {
+        if (bugs[j].visible == 1) {
+            clear += 1;
+        }
+    }
+    if (clear == 0) {
+        bug_cycles += 1;
+        if (bug_cycles == SLEEP) {
+            for (j = 0; j < bug_count; j += 1) {    
+                bugs[j].visible = 1;
+                bugs[j].drawing_order = 1;
+            }
+            bug_cycles = 0;
+        }
+    }
+    clear = 0; 
+    if (bug.visible == 1 && ship_laser touches bug) {
+        bug.visible = 0;
+        ship_laser.visible = 0;
+        ship_laser.y = ship.y + ship.h - ship_laser.h;
+        score += 20;
+    }
+    // The bugs have to move as one entity.
+    direction_changed = 0;
+    if (bug.user_int == 0) { space_offset = 0; }
+    if (bug.user_int > 0) { space_offset = 20; }
+    if (bug.x == (screen_bounds  + (bug_size * bug.user_int + bug_spacer) - 
+                                            bug_step) && direction == LEFT) { 
+        bug.x -= bug_step; 
+        direction = RIGHT;
+        direction_changed = 1; 
+    }
+    if (bug.x == (window_width - screen_bounds - (bug_size * (bug.user_int * 2) +
+                            space_offset)) && direction == RIGHT) {
+        bug.x -= bug_step; 
+        direction = LEFT;
+        direction_changed = 1; 
+    }
+    if (direction_changed == 0) {
+        if (direction == RIGHT) {
+            bug.x += bug_step; 
+        }
+        if (direction == LEFT) {
+            bug.x -= bug_step; 
+        }
+    }
+
+    // Only fire if there is nobody directly below.
+    for (i = 0; i < bug_count; i += 1) {
+        if (bug_laser[i].visible == 0) {
+            bug_laser[i].y = bug.y;
+            if (direction == LEFT) {
+                bug_laser[i].x = bug.x;
+            } 
+            if (direction == RIGHT) {
+                bug_laser[i].x = bug.x + (bug.w / 2);
+            }
+        }
+        if (bug.user_int != bugs[i].user_int && (bug.x != bugs[i].x || 
+                bug.y < bugs[i].y) && bug.visible == 1) {
+            bug_laser[i].visible = 1;
+            if (DEBUG > 1) {
+                print ("bug[" + i + "] " + "group: " + bug.user_int + 
+                    " not firing because of friendly");
+            }
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+animation animate_ship(triangle game_ship) {
+   for (i = 0; i < bug_count; i += 1) {
+        if (bug_laser[i] touches game_ship && game_ship.visible == 1) {
+            game_ship.visible = 0;
+            bug_laser[i].visible = 0;
+            lives -= 1;
+            if (lives >= 0) {
+                ships[lives].visible = 0;
+            }
+        }
+    } 
+
+    if (lives < 0) {
+       game_over.visible = 1; 
+    }
+
+    if (game_ship.visible == 0 && lives >= 0) {
+        if (DEBUG > 0) {
+            print("animate_ship::lives = " + lives);
+        }
+        ship_cycles += 1;
+        if (ship_cycles == SLEEP) {
+            game_ship.visible = 1;
+            game_ship.drawing_order = 1;
+            ship_cycles = 0;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+on leftarrow {
+    ship.x -= ship_step;
+    if (ship.x < 0) {
+        ship.x = 0;
+    }
+}
+
+//------------------------------------------------------------------------------
+on rightarrow {
+    ship.x += ship_step;
+    if (ship.x >= window_width - ship_size) {
+        ship.x = (window_width - ship_size);
+    }
+}
+
+//------------------------------------------------------------------------------
+on space {
+    if (DEBUG > 0) {
+        print ("Fire");
+    }
+
+    if (ship_laser.visible == 0 && ship.visible == 1) {
+        ship_laser.x = ship.x + (ship.w / 2) - (ship_laser.w / 2);
+        ship_laser.y = ship.y + ship.h - ship_laser.h;
+        ship_laser.visible = 1;
+    }
+
+    alive = 0;
+    for (i = 0; i < bug_count; i += 1) {
+       if (bugs[i].visible == 1) {
+            alive += 1;
+        } 
+    }
+    if (alive == 0) {
+        print("Game Over");
+        exit(0);
+    }   
+}
